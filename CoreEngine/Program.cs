@@ -6,6 +6,34 @@ namespace CoreEngine;
 
 class Program
 {
+    static async Task Main(string[] args)
+    {
+        var orderQueue = new BlockingCollection<Order>(boundedCapacity:1000);
+        var book = new OrderBook();
+        
+        var cts = new CancellationTokenSource();
+        
+        var consumer = Task.Run(() => ConsumeOrders(orderQueue, book, cts.Token), cts.Token);
+        
+        var producers = new List<Task>
+        {
+            Task.Run(() => ProduceRandomOrders(orderQueue, cts.Token), cts.Token),
+        };
+        
+        Console.WriteLine("Press ENTER to stop");
+        Console.ReadLine();
+        
+        cts.Cancel();
+        orderQueue.CompleteAdding();
+
+        await Task.WhenAll(producers);
+        await consumer;
+        
+        Console.WriteLine("All orders processed. Shutting down...");
+        
+
+    }
+    
     static void ProduceRandomOrders(BlockingCollection<Order> queue, CancellationToken token)
     {
         var rnd = new Random();
