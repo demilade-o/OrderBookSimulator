@@ -27,4 +27,18 @@ class Program
         }
         catch (OperationCanceledException){}
     }
+
+    static void ConsumeOrders(BlockingCollection<Order> queue, OrderBook book, CancellationToken token)
+    {
+        foreach (var order in queue.GetConsumingEnumerable(token))
+        {
+            book.AddOrder(order);
+            var (trades, _) = book.Match();
+            foreach (var (buy, sell, qty) in trades)
+            {
+                Console.WriteLine($"TRADE: {qty} @ {sell.Price} " +
+                                  $"(B {buy.Id.ToString()[..8]} / S {sell.Id.ToString()[..8]})");
+            }
+        }
+    }
 }
