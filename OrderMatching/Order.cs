@@ -22,5 +22,5 @@ namespace OrderMatching;
             Quantity = qty;
         }
 
-        public override string ToString() => $"{Side} {Price}@{Quantity} ({Id.ToString()[..8]})";
+        public override string ToString() => $"{Side} {Price} @ {Quantity} ({Id.ToString()[..8]})";
     }
