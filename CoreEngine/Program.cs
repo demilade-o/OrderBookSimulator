@@ -25,5 +25,6 @@ class Program
                 Thread.Sleep(50);
             }
         }
+        catch (OperationCanceledException){}
     }
 }
