@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Threading.Channels;
 using OrderMatching;
 
 namespace CoreEngine;
@@ -8,33 +9,32 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        var orderQueue = new BlockingCollection<Order>(boundedCapacity:1000);
-        var book = new OrderBook();
+        var channel = Channel.CreateBounded<Order>(new BoundedChannelOptions(1000)
+        {
+            FullMode = BoundedChannelFullMode.Wait,
+            SingleWriter = false,
+            SingleReader = true
+        });
         
+        var book = new OrderBook();
         var cts = new CancellationTokenSource();
         
-        var consumer = Task.Run(() => ConsumeOrders(orderQueue, book, cts.Token), cts.Token);
-        
-        var producers = new List<Task>
-        {
-            Task.Run(() => ProduceRandomOrders(orderQueue, cts.Token), cts.Token),
-        };
+        var consumer = ConsumeOrdersAsync(channel.Reader, book, cts.Token);
+        var producers = ProduceRandomOrdersAsync(channel.Writer, cts.Token);
         
         Console.WriteLine("Press ENTER to stop");
         Console.ReadLine();
         
         cts.Cancel();
-        orderQueue.CompleteAdding();
+        channel.Writer.Complete();
 
-        await Task.WhenAll(producers);
+        await producers;
         await consumer;
         
         Console.WriteLine("All orders processed. Shutting down...");
-        
-
     }
     
-    static void ProduceRandomOrders(BlockingCollection<Order> queue, CancellationToken token)
+    static async Task ProduceRandomOrdersAsync(ChannelWriter<Order> writer, CancellationToken token)
     {
         var rnd = new Random();
 
@@ -47,18 +47,18 @@ class Program
                 var qty = rnd.Next(1, 21);
                 var order = new Order(side, price, qty);
                 
-                queue.Add(order, token);
+                await writer.WriteAsync(order, token);
                 Console.WriteLine($"Enqueued {order}");
                 
-                Thread.Sleep(50);
+                await Task.Delay(50, token);
             }
         }
         catch (OperationCanceledException){}
     }
 
-    static void ConsumeOrders(BlockingCollection<Order> queue, OrderBook book, CancellationToken token)
+    static async Task ConsumeOrdersAsync(ChannelReader<Order> reader, OrderBook book, CancellationToken token)
     {
-        foreach (var order in queue.GetConsumingEnumerable(token))
+        await foreach (var order in reader.ReadAllAsync(token))
         {
             book.AddOrder(order);
             var (trades, _) = book.Match();
