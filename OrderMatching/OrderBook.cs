@@ -70,6 +70,10 @@ public class OrderBook
         }
     }
 
+    public IEnumerable<Order> GetTopBuys(int count) => _buys.Take(count);
+    
+    public IEnumerable<Order> GetTopSells(int count) => _sells.Take(count);
+
     public override string ToString()
     {
         lock (_lock)
