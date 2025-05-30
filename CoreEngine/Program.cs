@@ -15,45 +15,70 @@ class Program
         
         var consumer = Task.Run(() => ConsumeOrders(orderQueue, book, cts.Token), cts.Token);
         
-        var producers = new List<Task>
-        {
-            Task.Run(() => ProduceRandomOrders(orderQueue, cts.Token), cts.Token),
-        };
-        
-        Console.WriteLine("Press ENTER to stop");
-        Console.ReadLine();
-        
-        cts.Cancel();
-        orderQueue.CompleteAdding();
+        Console.WriteLine("Welcome to OrderBook Simulator!");
+        Console.WriteLine("Commands:");
+        Console.WriteLine("    BUY <price> <quantity>    e.g BUY 101.50 10");
+        Console.WriteLine("    SELL <price> <quantity>   e.g BUY 100.00 5");
+        Console.WriteLine("    BOOK                      Show top of book");
+        Console.WriteLine("    EXIT                      Shut down");
+        Console.WriteLine();
 
-        await Task.WhenAll(producers);
+        while (true)
+        {
+            Console.Write("> ");
+            var line = Console.ReadLine();
+            if (line is null) continue;
+
+            var parts = line.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0) continue;
+            
+            var cmd = parts[0].ToUpperInvariant();
+            if (cmd == "EXIT")
+            {
+                Console.WriteLine("Shutting down input...");
+                break;
+            }
+            if (cmd == "BOOK")
+            {
+                Console.WriteLine(book);
+            }
+
+            else if ((cmd == "BUY" || cmd == "SELL") && parts.Length == 3)
+            {
+                if (!decimal.TryParse(parts[1], out var price))
+                {
+                    Console.WriteLine("Invalid price");
+                    continue;
+                }
+                if (!int.TryParse(parts[2], out var qty))
+                {
+                    Console.WriteLine("Invalid quantity. Usage: BUY <price> <quantity>");
+                    continue;
+                }
+
+                var side = cmd == "BUY" ? Side.Buy : Side.Sell;
+                var order = new Order(side, price, qty);
+
+                try
+                {
+                    orderQueue.Add(order, cts.Token);
+                    Console.WriteLine($"Enqueued {order}");
+                }
+                catch (OperationCanceledException)
+                {
+                    Console.WriteLine("Input cancelled. Cannot enqueue more orders.");
+                    break;
+                }
+            }
+
+
+        }
+        orderQueue.CompleteAdding();
+        cts.Cancel();
+
         await consumer;
         
-        Console.WriteLine("All orders processed. Shutting down...");
-        
-
-    }
-    
-    static void ProduceRandomOrders(BlockingCollection<Order> queue, CancellationToken token)
-    {
-        var rnd = new Random();
-
-        try
-        {
-            while (!token.IsCancellationRequested)
-            {
-                var side = rnd.Next(2) == 0 ? Side.Buy : Side.Sell;
-                var price = Math.Round((decimal)(rnd.NextDouble() * 10 + 100), 2);
-                var qty = rnd.Next(1, 21);
-                var order = new Order(side, price, qty);
-                
-                queue.Add(order, token);
-                Console.WriteLine($"Enqueued {order}");
-                
-                Thread.Sleep(50);
-            }
-        }
-        catch (OperationCanceledException){}
+        Console.WriteLine("Goodbye!");
     }
 
     static void ConsumeOrders(BlockingCollection<Order> queue, OrderBook book, CancellationToken token)
