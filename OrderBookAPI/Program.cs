@@ -7,7 +7,7 @@ builder.Services.AddSingleton<OrderBook>();
 
 var app = builder.Build();
 
-app.MapPost("/orders", (OrderDTO dto, OrderBook book) =>
+app.MapPost("/orders", (OrderDto dto, OrderBook book) =>
 {
     if (!Enum.TryParse<Side>(dto.Side, true, out var side))
     {
@@ -37,3 +37,5 @@ app.MapGet("/book", (OrderBook book) =>
 });
 
 app.Run();
+
+public partial class Program { }
