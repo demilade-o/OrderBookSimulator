@@ -27,7 +27,10 @@ class Program
         {
             Console.Write("> ");
             var line = Console.ReadLine();
-            if (line is null) continue;
+            if (line is null)
+            {
+                continue;
+            }
 
             var parts = line.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 0) continue;
@@ -70,6 +73,10 @@ class Program
                     break;
                 }
             }
+            else
+            {
+                Console.WriteLine("Unknown command or wrong format.");
+            }
 
 
         }
@@ -86,6 +93,7 @@ class Program
         foreach (var order in queue.GetConsumingEnumerable(token))
         {
             book.AddOrder(order);
+            
             var (trades, _) = book.Match();
             foreach (var (buy, sell, qty) in trades)
             {
