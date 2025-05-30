@@ -27,3 +27,13 @@ app.MapPost("/orders", (OrderDTO dto, OrderBook book) =>
     
     return Results.Ok(result);
 });
+
+app.MapGet("/book", (OrderBook book) =>
+{
+    var buys = book.GetTopBuys(5).Select(o => new {o.Id, o.Price, o.Quantity});
+    var sells = book.GetTopSells(5).Select(o => new {o.Id, o.Price, o.Quantity});
+    
+    return Results.Ok(new { Buys = buys, Sells = sells });
+});
+
+app.Run();
