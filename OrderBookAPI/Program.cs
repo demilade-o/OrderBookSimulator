@@ -9,7 +9,7 @@ var app = builder.Build();
 
 app.MapPost("/orders", (OrderDTO dto, OrderBook book) =>
 {
-    if (Enum.TryParse<Side>(dto.Side, true, out var side)) 
+    if (!Enum.TryParse<Side>(dto.Side, true, out var side)) 
         return Results.BadRequest($"Invalid Side: {dto.Side}");
 
     var order = new Order(side, dto.Price, dto.Quantity);
